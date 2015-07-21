@@ -136,10 +136,10 @@ I8 Bitboard::ChainScoreForPlayer(U8 player)
 }
 
 /* Find the power of the ls1b to find its index */
-inline int GetLS1BPower(U16 *x)
+inline int GetLS1BPower(U16 &x)
 {
-	U16 ls1b = (*x) & -(*x);
-	(*x) ^= ls1b;
+	U16 ls1b = x & -x;
+	x ^= ls1b;
 	return (int)log2((double)ls1b);
 }
 
@@ -158,9 +158,9 @@ void Bitboard::Print()
 
 	/* Fill the grid with symbols according to the board */
 	while (xGrid)
-		grid[15 - GetLS1BPower(&xGrid)] = 'X';
+		grid[15 - GetLS1BPower(xGrid)] = 'X';
 	while (oGrid)
-		grid[15-GetLS1BPower(&oGrid)] = 'O';
+		grid[15-GetLS1BPower(oGrid)] = 'O';
 
 	/* Print the grid nicely */
 	printf("\nBoard:\n\t   1   2   3   4\n\n");
@@ -182,5 +182,4 @@ void Bitboard::Print()
 		else
 			printf("O's turn.\n");
 	}
-
 }
