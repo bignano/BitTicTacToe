@@ -50,14 +50,15 @@ U16* Bitboard::GetAvailableMoves()
 
 	U8 moveNumber = 0;
 
-	U16 *moves = new U16[CountBits()]();
+	U16 *moves = new U16[GetClearBitsCount()]();
 
-	while (board)
-	{
-		ls1b = board & -board;			// Isolate the least-significant bit
-		moves[moveNumber++] = ls1b;		// Add move to array
-		board ^= ls1b;					// Clear ls1b from the board
-	}
+	if (moves != NULL)
+		while (board)
+		{
+			ls1b = board & -board;			// Isolate the least-significant bit
+			moves[moveNumber++] = ls1b;		// Add move to array
+			board ^= ls1b;					// Clear ls1b from the board
+		}
 	return moves;
 }
 
@@ -70,19 +71,17 @@ bool Bitboard::CheckMove(U16 move)
 
 Bitboard Bitboard::DoMove(U16 move)
 {
-	if (m_player == PLAYER_X) return Bitboard(xBoard | move, oBoard, PLAYER_O);
+	if (m_Player == PLAYER_X) return Bitboard(xBoard | move, oBoard, PLAYER_O);
 	else				   	  return Bitboard(xBoard, oBoard | move, PLAYER_X);
 }
 
 
-I8 Bitboard::CountBits()
+I8 Bitboard::CountClearBits()
 {
-	static I8 count = 0;
-	if (count) return count;
-
+	int count = 0;
 	/* Same method as CountBitsU16 */
 	U16 ls1b;
-	U16 x = ~(xBoard | oBoard);
+	U16 x = ~(xBoard | oBoard);		// Get the full board and invert bits
 	while (x)
 	{
 		ls1b = x & -x;
@@ -117,22 +116,25 @@ I8 Bitboard::ChainScoreForPlayer(U8 player)
 	I8 index = 0;
 	U16 currPat;
 
-	U16 board = xBoard;
-	U16 otherBoard = oBoard;
+	U16 board = xBoard;			// Use the player's board to count score for moves
+	U16 otherBoard = oBoard;	// Use the other board to exclude moves the other player blocked
 
+	// Set the boards according to the player
 	if (player == PLAYER_O) { board = oBoard; otherBoard = xBoard; }
 
+	// Loop through all win patterns
 	while (index < 10)
 	{
 		currPat = winPatterns[index++];
-		if (!(currPat & otherBoard))
+		if (!(currPat & otherBoard))						// Completely ignore blocked moves
 		{
-			currChain = CountBitsU16((currPat & board));
-			chainScore += currChain*currChain;
-			if (currChain>longestChain) longestChain = currChain;
+			currChain = CountBitsU16((currPat & board));	// Get the number of squares of the chain we have
+			chainScore += currChain*currChain;				// Add the score of the chain
+			if (currChain>longestChain)						// Update longest chain
+				longestChain = currChain;	
 		}
 	}
-	return chainScore + longestChain;
+	return chainScore + longestChain;	// The score is the sum of all partial chains squared and the longest one
 }
 
 /* Find the power of the ls1b to find its index */
@@ -175,9 +177,9 @@ void Bitboard::Print()
 	}
 
 	/* Print which player is taking the next turn */
-	if (m_winner == RESULT_NONE)
+	if (m_Winner == RESULT_NONE)
 	{
-		if (m_player == PLAYER_X)
+		if (m_Player == PLAYER_X)
 			printf("X's turn.\n");
 		else
 			printf("O's turn.\n");

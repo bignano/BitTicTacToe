@@ -62,7 +62,8 @@ void GameManager::PlayGame()
 
 	/* Print scores*/
 	printf("Scores:  X = %i  |  O = %i  | Draw = %i\n", xScore, oScore, dScore);
-	printf("Stats: longest time = %i ms |  average time = %i ms\n", stats_highest, stats_average / turns);
+	/* Print stats*/
+	printf("Stats: Time: total = %i ms | longest = %i ms | average = %i ms\n", stats_average, stats_highest, stats_average / turns);
 	/* Ask the player for another game*/
 	if (DisplayPolarQuestion("Play Again?"))
 		PlayGame();

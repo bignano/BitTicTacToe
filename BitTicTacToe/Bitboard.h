@@ -70,17 +70,18 @@ public:
 
 	/* Default constructor for an empty board */
 	Bitboard() : 
-		xBoard(0),			// Empty board
-		oBoard(0),			// Empty board
-		m_player(1),		// PLAYER_X
-		m_winner(RESULT_NONE) {};		// No winner, RESULT_NONE
+		xBoard(0),				// Empty board
+		oBoard(0),				// Empty board
+		m_Player(PLAYER_X),		// PLAYER_X
+		m_Winner(RESULT_NONE),	// No winner, RESULT_NONE
+		m_BitCount(16) {};		
 
 	~Bitboard() {} ;
 
 	/* Returns the identifier of the player who is next to make a move. */
-	U8 GetPlayer() const { return m_player; }
+	U8 GetPlayer() const { return m_Player; }
 	/* Returns the player who has won, or indicate a draw or a mid-game state (player == None). */
-	U8 GetWinner() const { return m_winner; }
+	U8 GetWinner() const { return m_Winner; }
 
 	/* Returns an array of indicies of all legal moves for the currnt board. */
 	U16* GetAvailableMoves();
@@ -94,8 +95,8 @@ public:
 	*/
 	Bitboard DoMove(U16 move);
 
-	/* Returns the number of set bits in the board, i.e. the number of moves taken. */
-	I8 CountBits();
+	/* Returns the number of clear bits in the board, i.e. the number of moves available. */
+	I8 GetClearBitsCount() { return m_BitCount; }
 
 	/* Returns an evaluation of the board regarding a player, based on number of chains and longest one. */
 	I8 ChainScoreForPlayer(U8 player);
@@ -109,8 +110,9 @@ private:
 	Bitboard(U16 xB, U16 oB, U8 player) :
 		xBoard(xB),
 		oBoard(oB),
-		m_player(player),
-		m_winner(FindWinner()) {};
+		m_Player(player),
+		m_BitCount(CountClearBits()),
+		m_Winner(FindWinner()) {};
 
 	/* The bitboard of the 'X' player. */
 	U16 xBoard;
@@ -118,12 +120,15 @@ private:
 	U16 oBoard;
 	
 	/* The player who is next to make a move. */
-	U8 m_player;
+	U8 m_Player;
+
+	/* Count of empty bits */
+	I8 CountClearBits();
+	I8 m_BitCount;
 
 	/* Find the winner, used once during initialization. */
 	U8 FindWinner();
 	/* The identifier of the winner (x, o, draw, none). */
-	U8 m_winner;
-
+	U8 m_Winner;
 };
 
