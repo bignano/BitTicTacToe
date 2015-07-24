@@ -76,6 +76,7 @@ void StartGame()
 	}
 	main();
 }
+
 int main()
 {
 	LoadExtension();

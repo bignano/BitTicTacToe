@@ -74,7 +74,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 			bestMove = currMove;
 
 	delete[] nextMoves;
-	printf("value: %i  static | evaluations: %i\n", bestMove.value, svCount);
+	printf("value: %i | static evaluations: %i\n", bestMove.value, svCount);
 	return bestMove.index;
 }
 
