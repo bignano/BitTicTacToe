@@ -2,9 +2,9 @@
 #include <math.h>		// log2
 #include <stdio.h>		// printf
 
-U8 Bitboard::FindWinner()
+int Bitboard::FindWinner()
 {
-	I8 index = 0;
+	int index = 0;
 	U16 currPat;
 
 	/* Loop through all 10 possible win patterns (defined in winPatterns) */
@@ -48,7 +48,7 @@ U16* Bitboard::GetAvailableMoves()
 	// Least significant bit
 	U16 ls1b;
 
-	U8 moveNumber = 0;
+	int moveNumber = 0;
 
 	U16 *moves = new U16[GetClearBitsCount()]();
 
@@ -76,7 +76,7 @@ Bitboard Bitboard::DoMove(U16 move)
 }
 
 
-I8 Bitboard::CountClearBits()
+int Bitboard::CountClearBits()
 {
 	int count = 0;
 	/* Same method as CountBitsU16 */
@@ -92,9 +92,9 @@ I8 Bitboard::CountClearBits()
 }
 
 /* Counts the number of set bits in a given number */
-I8 CountBitsU16(U16 x)
+int CountBitsU16(U16 x)
 {
-	I8 count = 0;
+	int count = 0;
 	// Least significant bit
 	U16 ls1b;
 	
@@ -108,12 +108,12 @@ I8 CountBitsU16(U16 x)
 	return count;
 }
 
-I8 Bitboard::ChainScoreForPlayer(U8 player)
+int Bitboard::ChainScoreForPlayer(int player)
 {
-	I8 chainScore = 0;
-	I8 longestChain = 0;
-	I8 currChain = 0;
-	I8 index = 0;
+	int chainScore = 0;
+	int longestChain = 0;
+	int currChain = 0;
+	int index = 0;
 	U16 currPat;
 
 	U16 board = xBoard;			// Use the player's board to count score for moves
@@ -184,4 +184,21 @@ void Bitboard::Print()
 		else
 			printf("O's turn.\n");
 	}
+}
+
+std::vector<double> Bitboard::EncodeBoard()
+{
+	std::vector<double> encoded(16, 0.0);
+
+	// Save copies of the board to keep it unmodified
+	U16 xGrid = xBoard;
+	U16 oGrid = oBoard;
+
+	/* Fill the encoded board */
+	while (xGrid)
+		encoded[15 - GetLS1BPower(xGrid)] = 1;
+	while (oGrid)
+		encoded[15 - GetLS1BPower(oGrid)] = -1;
+
+	return encoded;
 }

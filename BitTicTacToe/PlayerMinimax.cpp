@@ -4,9 +4,7 @@
 #include <future>
 
 
-const I8 MINIMAX_INFINITY = 100;
-
-int svCount = 0;
+const int MINIMAX_INFINITY = 100;
 
 U16 PlayerMinimax::GetMove(Bitboard board)
 {
@@ -17,7 +15,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 
 	// Get all the next moves for the board
 	U16 *nextMoves = board.GetAvailableMoves();
-	I8   moveCount = board.GetClearBitsCount();
+	int   moveCount = board.GetClearBitsCount();
 	
 	// Convert C-style array to vector
 	vector<U16> nextMovesVec(moveCount);
@@ -25,7 +23,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 		nextMovesVec[i] = nextMoves[i];
 
 	// Find the number of ADDITIONAL threads required (and available).
-	I8 numberOfThreads = m_NumberOfThreads;
+	int numberOfThreads = m_NumberOfThreads;
 	if (moveCount < numberOfThreads)	// Don't use more threads than tasks to performe
 		numberOfThreads = moveCount;
 	
@@ -46,7 +44,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 			this,								// Since this is a member function, 
 												// we have to include the hideden pointer *this
 			board,								
-			vector<U16>(						// Construct the subset vector
+			vector<U16>(						// Construct the subset vector (worker moves)
 				&nextMovesVec[dist[threadNumber+1][0]], 
 				&nextMovesVec[dist[threadNumber+1][1]]) 
 			));
@@ -78,19 +76,17 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 	return bestMove.index;
 }
 
-// WITHOUT MULTI-THREADING
-//
 //U16 PlayerMinimax::GetMove(Bitboard board)
 //{
 //	svCount = 0;
 //	U16 *nextMoves = board.GetAvailableMoves();
-//	I8 moveCount = board.GetClearBitsCount();
+//	int moveCount = board.GetClearBitsCount();
 //	Bitboard newBoard;
 //
 //	MinimaxMove move;
 //	move.value = -MINIMAX_INFINITY;
 //	move.index = nextMoves[0];
-//	I8 newValue;
+//	int newValue;
 //
 //	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
 //	{
@@ -121,7 +117,7 @@ MinimaxMove PlayerMinimax::MinimaxWorker(Bitboard board, std::vector<U16> nextMo
 	for (int moveIndex = 0; moveIndex < nextMoves.size(); moveIndex++)
 	{
 		Bitboard newBoard = board.DoMove(nextMoves[moveIndex]);
-		I8 newValue = Mini(newBoard, m_SearchDepth - 1, -MINIMAX_INFINITY, MINIMAX_INFINITY);
+		int newValue = Mini(newBoard, m_SearchDepth - 1, -MINIMAX_INFINITY, MINIMAX_INFINITY);
 
 		if (newValue > move.value)
 		{
@@ -166,19 +162,19 @@ std::vector<std::vector<int>> PlayerMinimax::UniformDistribution(int moveCount, 
 //
 // NEGAAMX IMPLEMENTATION, NOT SUITABLE FOR THIS CASE
 //
-//I8 PlayerMinimax::Minimax(Bitboard board, I8 depth, I8 alpha, I8 beta)
+//int PlayerMinimax::Minimax(Bitboard board, int depth, int alpha, int beta)
 //{
 //	if (depth <= 0 || board.GetWinner() != 0) 
 //		return GetStaticValue(board);
 //
-//	I8 value = -MINIMAX_INFINITY;
+//	int value = -MINIMAX_INFINITY;
 //	U16 *nextMoves = board.GetAvailableMoves();
-//	I8 moveCount = board.GetClearBitsCount();
+//	int moveCount = board.GetClearBitsCount();
 //	Bitboard newBoard;
 //	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
 //	{
 //		newBoard = board.DoMove(nextMoves[moveIndex]);
-//		I8 newValue = -Minimax(newBoard, depth - 1, -beta, -alpha);
+//		int newValue = -Minimax(newBoard, depth - 1, -beta, -alpha);
 //		if (newValue > value)
 //			value = newValue;
 //		if (value > alpha)
@@ -194,20 +190,20 @@ std::vector<std::vector<int>> PlayerMinimax::UniformDistribution(int moveCount, 
 //}
 
 // Fail-hard minimax implemention
-I8 PlayerMinimax::Mini(Bitboard board, I8 depth, I8 alpha, I8 beta)
+int PlayerMinimax::Mini(Bitboard board, int depth, int alpha, int beta)
 {
 	// Termination condition
 	if (depth <= 0 || board.GetWinner() != 0)
 		return GetStaticValue(board);
 
 	U16 *nextMoves = board.GetAvailableMoves();
-	I8 moveCount = board.GetClearBitsCount();
+	int moveCount = board.GetClearBitsCount();
 	Bitboard newBoard;
 
 	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
 	{
 		newBoard = board.DoMove(nextMoves[moveIndex]);
-		I8 score = Max(newBoard, depth - 1, alpha, beta);
+		int score = Max(newBoard, depth - 1, alpha, beta);
 
 		if (score <= alpha) 
 		{
@@ -222,19 +218,19 @@ I8 PlayerMinimax::Mini(Bitboard board, I8 depth, I8 alpha, I8 beta)
 	return beta;
 }
 
-I8 PlayerMinimax::Max(Bitboard board, I8 depth, I8 alpha, I8 beta)
+int PlayerMinimax::Max(Bitboard board, int depth, int alpha, int beta)
 {
 	if (depth <= 0 || board.GetWinner() != 0)
 		return GetStaticValue(board);
 
 	U16 *nextMoves = board.GetAvailableMoves();
-	I8 moveCount = board.GetClearBitsCount();
+	int moveCount = board.GetClearBitsCount();
 	Bitboard newBoard;
 
 	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
 	{
 		newBoard = board.DoMove(nextMoves[moveIndex]);
-		I8 score = Mini(newBoard, depth - 1, alpha, beta);
+		int score = Mini(newBoard, depth - 1, alpha, beta);
 
 		if (score >= beta) 
 		{
@@ -249,16 +245,16 @@ I8 PlayerMinimax::Max(Bitboard board, I8 depth, I8 alpha, I8 beta)
 	return alpha;
 }
 
-I8 PlayerMinimax::GetStaticValue(Bitboard board)
+int PlayerMinimax::GetStaticValue(Bitboard &board)
 {
 	svCount++;	// Count number of static evaluations performed
-	U8 winner = board.GetWinner();
+	int winner = board.GetWinner();
 
 	// Assume the winner is the opponent
-	I8 value = -50; 
+	int value = -50; 
 
 	// Cover all other options
-	if (winner == playerTag)
+	if (winner == m_PlayerTag)
 		value = 50;
 	else if (winner == RESULT_DRAW)
 		value = 0;
@@ -267,7 +263,7 @@ I8 PlayerMinimax::GetStaticValue(Bitboard board)
 	else if (winner == RESULT_NONE)
 	{
 		if (m_bUseChainScore)
-			value = board.ChainScoreForPlayer(playerTag);
+			value = board.ChainScoreForPlayer(m_PlayerTag);
 		else value = 0;
 	}
 

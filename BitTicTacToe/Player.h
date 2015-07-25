@@ -13,10 +13,12 @@ public:
 	*/
 	virtual U16 GetMove(Bitboard board) { return 0; }
 
+	int GetPlayerTag() { return m_PlayerTag; }
+
 protected:
 
 	/* Default constructor, not meant to be called. */
-	Player(U8 tag = PLAYER_X) : playerTag(tag) {};
-	U8 playerTag;
+	Player(int tag = PLAYER_X) : m_PlayerTag(tag) {};
+	int m_PlayerTag;
 };
 

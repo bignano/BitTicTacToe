@@ -5,7 +5,7 @@
 struct MinimaxMove
 {
 	U16 index;
-	I8 value;
+	int value;
 };
 
 class PlayerMinimax :
@@ -14,11 +14,12 @@ class PlayerMinimax :
 public:
 
 	// Default player
-	PlayerMinimax(U8 tag = PLAYER_X, int depth = 9, bool useChainScore = true, int maxNumberOfThreads=3) :
+	PlayerMinimax(int tag = PLAYER_X, int depth = 9, bool useChainScore = true, int maxNumberOfThreads=3) :
 		Player(tag), 
 		m_SearchDepth(CapSearchDepth(depth)),
 		 m_bUseChainScore(useChainScore),
-		 m_NumberOfThreads(maxNumberOfThreads) {};
+		 m_NumberOfThreads(maxNumberOfThreads),
+		 svCount(0) {};
 	
 	~PlayerMinimax() {}
 
@@ -34,8 +35,8 @@ private:
 	std::vector<std::vector<int>> UniformDistribution(int moveCount, int numberOfThreads);
 
 	/* Regular minimax functions */
-	I8 Mini(Bitboard board, I8 depth, I8 alpha, I8 beta);
-	I8 Max(Bitboard board, I8 depth, I8 alpha, I8 beta);
+	int Mini(Bitboard board, int depth, int alpha, int beta);
+	int Max(Bitboard board, int depth, int alpha, int beta);
 
 	/* The initial search depth*/
 	int m_SearchDepth;
@@ -49,7 +50,20 @@ private:
 	int m_NumberOfThreads;
 
 protected:
-	I8 GetStaticValue(Bitboard board);
 
+	// Default without chainscore (NN's override evaluation)
+	PlayerMinimax(int tag = PLAYER_X, int depth = 9, int maxNumberOfThreads = 3) :
+		Player(tag),
+		m_SearchDepth(CapSearchDepth(depth)),
+		m_bUseChainScore(false),
+		m_NumberOfThreads(maxNumberOfThreads),
+		svCount(0)
+	{};
+
+	/* Returns static value for a board */
+	virtual int GetStaticValue(Bitboard &board);
+
+	// Count of static evaluations performed in last move
+	int svCount;
 };
 

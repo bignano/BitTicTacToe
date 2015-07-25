@@ -117,15 +117,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Bitboard.cpp" />
+    <ClCompile Include="EvolutionManager.cpp" />
     <ClCompile Include="GameManager.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="NeuralNet.cpp" />
+    <ClCompile Include="PlayerEvolutionary.cpp" />
     <ClCompile Include="PlayerHuman.cpp" />
     <ClCompile Include="PlayerMinimax.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bitboard.h" />
+    <ClInclude Include="EvolutionManager.h" />
     <ClInclude Include="GameManager.h" />
+    <ClInclude Include="NeuralNet.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="PlayerEvolutionary.h" />
     <ClInclude Include="PlayerHuman.h" />
     <ClInclude Include="PlayerMinimax.h" />
   </ItemGroup>

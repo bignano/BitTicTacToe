@@ -8,8 +8,9 @@ using namespace std;
 void GameManager::PlayGame()
 {
 	/* Start with an empty board */
-	board = Bitboard();
+	board = Bitboard(cPlayer->GetPlayerTag());
 	board.Print();
+
 
 	/* Statistics of the game: longest and average time of 'thinking' (for both players). */
 	int stats_average = 0;

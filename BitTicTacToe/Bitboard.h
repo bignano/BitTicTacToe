@@ -1,15 +1,14 @@
 #pragma once
 
-#define UINT16_MAX  0xffffui16
+#include <vector>
+#include <stdint.h>		// For UINT16_MAX
 
 #define RESULT_NONE 0
 #define PLAYER_X	1
 #define PLAYER_O	2
 #define RESULT_DRAW 3
 
-// Define standard ints
-typedef signed   char	I8;
-typedef unsigned char	U8;
+// Define unsigned integer for board storage
 typedef unsigned short U16;
 
 /*
@@ -69,19 +68,19 @@ class Bitboard
 public:
 
 	/* Default constructor for an empty board */
-	Bitboard() : 
+	Bitboard(int firstPlayer=PLAYER_X) : 
 		xBoard(0),				// Empty board
 		oBoard(0),				// Empty board
-		m_Player(PLAYER_X),		// PLAYER_X
+		m_Player(firstPlayer),		// PLAYER_X
 		m_Winner(RESULT_NONE),	// No winner, RESULT_NONE
 		m_BitCount(16) {};		
 
 	~Bitboard() {} ;
 
 	/* Returns the identifier of the player who is next to make a move. */
-	U8 GetPlayer() const { return m_Player; }
+	int GetPlayer() const { return m_Player; }
 	/* Returns the player who has won, or indicate a draw or a mid-game state (player == None). */
-	U8 GetWinner() const { return m_Winner; }
+	int GetWinner() const { return m_Winner; }
 
 	/* Returns an array of indicies of all legal moves for the currnt board. */
 	U16* GetAvailableMoves();
@@ -96,18 +95,20 @@ public:
 	Bitboard DoMove(U16 move);
 
 	/* Returns the number of clear bits in the board, i.e. the number of moves available. */
-	I8 GetClearBitsCount() { return m_BitCount; }
+	int GetClearBitsCount() { return m_BitCount; }
 
 	/* Returns an evaluation of the board regarding a player, based on number of chains and longest one. */
-	I8 ChainScoreForPlayer(U8 player);
+	int ChainScoreForPlayer(int player);
 
 	/* Print the board to the console. */
 	void Print();
 	
+	std::vector<double> EncodeBoard();
+
 private:
 	
 	/* Private constructor, used in move generation. */
-	Bitboard(U16 xB, U16 oB, U8 player) :
+	Bitboard(U16 xB, U16 oB, int player) :
 		xBoard(xB),
 		oBoard(oB),
 		m_Player(player),
@@ -120,15 +121,15 @@ private:
 	U16 oBoard;
 	
 	/* The player who is next to make a move. */
-	U8 m_Player;
+	int m_Player;
 
 	/* Count of empty bits */
-	I8 CountClearBits();
-	I8 m_BitCount;
+	int CountClearBits();
+	int m_BitCount;
 
 	/* Find the winner, used once during initialization. */
-	U8 FindWinner();
+	int FindWinner();
 	/* The identifier of the winner (x, o, draw, none). */
-	U8 m_Winner;
+	int m_Winner;
 };
 
