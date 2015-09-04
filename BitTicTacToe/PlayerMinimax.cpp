@@ -3,8 +3,19 @@
 #include <thread>
 #include <future>
 
+const int MINIMAX_INFINITY = 2147483647;
 
-const int MINIMAX_INFINITY = 100;
+template<class T>
+T Max(const T &t1, const T &t2)
+{
+	return (t1 > t2) ? t1 : t2;
+}
+
+template<class T>
+T Min(const T &t1, const T &t2)
+{
+	return (t1 < t2) ? t1 : t2;
+}
 
 U16 PlayerMinimax::GetMove(Bitboard board)
 {
@@ -27,7 +38,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 	if (moveCount < numberOfThreads)	// Don't use more threads than tasks to performe
 		numberOfThreads = moveCount;
 	
-	vector<vector<int>> dist = UniformDistribution(moveCount, numberOfThreads);
+	vector<vector<int>> dist = DistributeWork(moveCount, numberOfThreads);
 
 	--numberOfThreads;	// We are already using one thread
 
@@ -42,37 +53,34 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 			launch::async,						// Start a thread and not lazy-evaluation
 			&PlayerMinimax::MinimaxWorker,		// Pass the worker function
 			this,								// Since this is a member function, 
-												// we have to include the hideden pointer *this
+												// we have to include the hideden pointer this
 			board,								
 			vector<U16>(						// Construct the subset vector (worker moves)
 				&nextMovesVec[dist[threadNumber+1][0]], 
 				&nextMovesVec[dist[threadNumber+1][1]]) 
 			));
 	}
-
-	vector<MinimaxMove> bestMoves;
 	
 	// Let the main thread do part of the work
-	bestMoves.push_back(MinimaxWorker(
+	MinimaxMove bestMove = MinimaxWorker(
 		board, 
 		vector<U16>(
 			&nextMovesVec[dist[0][0]], 
 			&nextMovesVec[dist[0][1]]
-			)));
+			));
 
-	// Populate bestMoves with best moves from each thread
+	// Get moves and find best
 	for (int i = 0; i < numberOfThreads; i++)
-		bestMoves.push_back(futures[i].get());
+	{
+		MinimaxMove move = futures[i].get();
+		if (move.value > bestMove.value)
+			bestMove = move;
+	}
 
-	MinimaxMove bestMove = bestMoves[0];
-
-	// Find the overall best move
-	for (MinimaxMove currMove : bestMoves)
-		if (currMove.value > bestMove.value)
-			bestMove = currMove;
-
+	if (m_Verbose)
+		printf("\nvalue: %i | static evaluations: %i\n", bestMove.value, svCount);
+	
 	delete[] nextMoves;
-	printf("value: %i | static evaluations: %i\n", bestMove.value, svCount);
 	return bestMove.index;
 }
 
@@ -91,7 +99,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 //	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
 //	{
 //		newBoard = board.DoMove(nextMoves[moveIndex]);
-//		newValue = Mini(newBoard, m_SearchDepth - 1, -MINIMAX_INFINITY, MINIMAX_INFINITY);
+//		newValue = Alphabeta(newBoard, m_SearchDepth - 1, -MINIMAX_INFINITY, MINIMAX_INFINITY);
 //
 //		if (newValue > move.value)
 //		{
@@ -117,18 +125,21 @@ MinimaxMove PlayerMinimax::MinimaxWorker(Bitboard board, std::vector<U16> nextMo
 	for (int moveIndex = 0; moveIndex < nextMoves.size(); moveIndex++)
 	{
 		Bitboard newBoard = board.DoMove(nextMoves[moveIndex]);
-		int newValue = Mini(newBoard, m_SearchDepth - 1, -MINIMAX_INFINITY, MINIMAX_INFINITY);
-
+		int newValue = Alphabeta(newBoard, m_SearchDepth - 1, -MINIMAX_INFINITY, MINIMAX_INFINITY);
 		if (newValue > move.value)
 		{
 			move.index = nextMoves[moveIndex];
 			move.value = newValue;
 		}
+
+		using namespace std::chrono_literals;
+		if (m_PowerSaver)
+			std::this_thread::sleep_for(5ms);
 	}
 	return move;
 }
 
-std::vector<std::vector<int>> PlayerMinimax::UniformDistribution(int moveCount, int numberOfThreads)
+std::vector<std::vector<int>> PlayerMinimax::DistributeWork(int moveCount, int numberOfThreads)
 {
 	using namespace std;
 	vector<vector<int>> dist;
@@ -159,113 +170,64 @@ std::vector<std::vector<int>> PlayerMinimax::UniformDistribution(int moveCount, 
 	return dist;
 }
 
-//
-// NEGAAMX IMPLEMENTATION, NOT SUITABLE FOR THIS CASE
-//
-//int PlayerMinimax::Minimax(Bitboard board, int depth, int alpha, int beta)
-//{
-//	if (depth <= 0 || board.GetWinner() != 0) 
-//		return GetStaticValue(board);
-//
-//	int value = -MINIMAX_INFINITY;
-//	U16 *nextMoves = board.GetAvailableMoves();
-//	int moveCount = board.GetClearBitsCount();
-//	Bitboard newBoard;
-//	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
-//	{
-//		newBoard = board.DoMove(nextMoves[moveIndex]);
-//		int newValue = -Minimax(newBoard, depth - 1, -beta, -alpha);
-//		if (newValue > value)
-//			value = newValue;
-//		if (value > alpha)
-//			alpha = value;
-//		if (alpha >= beta)
-//		{
-//			delete[] nextMoves;
-//			return alpha;
-//		}
-//	}
-//	delete[] nextMoves;
-//	return value;
-//}
-
-// Fail-hard minimax implemention
-int PlayerMinimax::Mini(Bitboard board, int depth, int alpha, int beta)
+int PlayerMinimax::Alphabeta(Bitboard board, int depth, int alpha, int beta)
 {
 	// Termination condition
-	if (depth <= 0 || board.GetWinner() != 0)
+	if (depth <= 0 || board.GetWinner() != GameTag::Result_None)
 		return GetStaticValue(board);
 
 	U16 *nextMoves = board.GetAvailableMoves();
 	int moveCount = board.GetClearBitsCount();
 	Bitboard newBoard;
 
-	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
-	{
-		newBoard = board.DoMove(nextMoves[moveIndex]);
-		int score = Max(newBoard, depth - 1, alpha, beta);
+	int value = -MINIMAX_INFINITY;
 
-		if (score <= alpha) 
+	if (board.GetPlayerTag() == m_PlayerTag)	// maximizing player
+		for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
 		{
-			delete[] nextMoves;
-			return alpha;
+			newBoard = board.DoMove(nextMoves[moveIndex]);
+			value = Max(value, Alphabeta(newBoard, depth - 1, alpha, beta));
+			alpha = Max(alpha, value);
+
+			if (alpha >= beta)
+				break;
 		}
-
-		if (score < beta)
-			beta = score;
-	}
-	delete[] nextMoves;
-	return beta;
-}
-
-int PlayerMinimax::Max(Bitboard board, int depth, int alpha, int beta)
-{
-	if (depth <= 0 || board.GetWinner() != 0)
-		return GetStaticValue(board);
-
-	U16 *nextMoves = board.GetAvailableMoves();
-	int moveCount = board.GetClearBitsCount();
-	Bitboard newBoard;
-
-	for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
+	else // minimizing player
 	{
-		newBoard = board.DoMove(nextMoves[moveIndex]);
-		int score = Mini(newBoard, depth - 1, alpha, beta);
-
-		if (score >= beta) 
+		value = MINIMAX_INFINITY;
+		for (int moveIndex = 0; moveIndex < moveCount; moveIndex++)
 		{
-			delete[] nextMoves;
-			return beta;
-		}
+			newBoard = board.DoMove(nextMoves[moveIndex]);
+			value = Min(value, Alphabeta(newBoard, depth - 1, alpha, beta));
+			beta = Min(beta, value);
 
-		if (score > alpha)
-			alpha = score;
+			if (alpha >= beta)
+				break;
+		}
 	}
+
 	delete[] nextMoves;
-	return alpha;
+	return value;
 }
 
 int PlayerMinimax::GetStaticValue(Bitboard &board)
 {
 	svCount++;	// Count number of static evaluations performed
-	int winner = board.GetWinner();
+	GameTag winner = board.GetWinner();
 
-	// Assume the winner is the opponent
-	int value = -50; 
+	GameTag otherPlayer =
+		(m_PlayerTag == GameTag::Player_X) ? GameTag::Player_O : GameTag::Player_X;
 
-	// Cover all other options
+	int value = 0;
+
 	if (winner == m_PlayerTag)
-		value = 50;
-	else if (winner == RESULT_DRAW)
-		value = 0;
+		value =  1000000000 + board.GetClearBitsCount();
 
-	// Avoid calculating chainscore if there's a win
-	else if (winner == RESULT_NONE)
-	{
-		if (m_bUseChainScore)
-			value = board.ChainScoreForPlayer(m_PlayerTag);
-		else value = 0;
-	}
+	if (winner == otherPlayer)
+		value = -1000000000 - board.GetClearBitsCount();
 
-	return value;	
+	else if (winner == GameTag::Result_None && m_bUseChainScore)
+		value = board.ChainScoreForPlayer(m_PlayerTag);
+
+	return value;
 }

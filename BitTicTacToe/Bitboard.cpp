@@ -1,8 +1,9 @@
 #include "Bitboard.h"
 #include <math.h>		// log2
 #include <stdio.h>		// printf
+#include <exception>	// std::exception
 
-int Bitboard::FindWinner()
+GameTag Bitboard::FindWinner()
 {
 	int index = 0;
 	U16 currPat;
@@ -22,9 +23,9 @@ int Bitboard::FindWinner()
 		*/
 
 		if ((xBoard & currPat) == currPat)
-			return PLAYER_X;
+			return GameTag::Player_X;
 		if ((oBoard & currPat) == currPat)
-			return PLAYER_O;
+			return GameTag::Player_O;
 	}
 
 	/*
@@ -33,16 +34,20 @@ int Bitboard::FindWinner()
 	and since we didn't return a winner it must be a draw.
 	*/
 	if ((xBoard | oBoard) == UINT16_MAX)
-		return RESULT_DRAW;
+		return GameTag::Result_Draw;
 
 	// If every check fails it's still mid-game 
-	return RESULT_NONE;		
+	return GameTag::Result_None;		
 }
 
-
-U16* Bitboard::GetAvailableMoves()
+GameTag Bitboard::GetOtherPlayerTag() const
 {
-	// Get all the set bits on the board, then flip to get all empty bits
+	return (m_Player == GameTag::Player_X) ? GameTag::Player_O : GameTag::Player_X;
+}
+
+U16 *Bitboard::GetAvailableMoves() const
+{
+	// Get all set bits on the board, then flip to get all clear bits
 	U16 board = ~(xBoard | oBoard);
 
 	// Least significant bit
@@ -50,15 +55,14 @@ U16* Bitboard::GetAvailableMoves()
 
 	int moveNumber = 0;
 
-	U16 *moves = new U16[GetClearBitsCount()]();
+	U16 *moves = new U16[m_BitCount]();
 
-	if (moves != NULL)
-		while (board)
-		{
-			ls1b = board & -board;			// Isolate the least-significant bit
-			moves[moveNumber++] = ls1b;		// Add move to array
-			board ^= ls1b;					// Clear ls1b from the board
-		}
+	while (board)
+	{
+		ls1b = board & -board;			// Isolate the least-significant bit
+		moves[moveNumber++] = ls1b;		// Add move to array
+		board ^= ls1b;					// Clear ls1b from the board
+	}
 	return moves;
 }
 
@@ -69,12 +73,23 @@ bool Bitboard::CheckMove(U16 move)
 }
 
 
-Bitboard Bitboard::DoMove(U16 move)
+Bitboard Bitboard::DoMove(U16 move, GameTag player)
 {
-	if (m_Player == PLAYER_X) return Bitboard(xBoard | move, oBoard, PLAYER_O);
-	else				   	  return Bitboard(xBoard, oBoard | move, PLAYER_X);
+	// This prevents problems with game logic
+	if (player != m_Player)
+		throw std::exception("The given player is not next to make a move");
+	
+	return DoMove(move);
 }
 
+Bitboard Bitboard::DoMove(U16 move)
+{
+	if ((xBoard | oBoard) & move)	// The requested move isn't empty
+		throw std::exception("Invalid move");
+
+	if (m_Player == GameTag::Player_X) return Bitboard(xBoard | move, oBoard, GameTag::Player_O);
+	else				   			   return Bitboard(xBoard, oBoard | move, GameTag::Player_X);
+}
 
 int Bitboard::CountClearBits()
 {
@@ -108,7 +123,7 @@ int CountBitsU16(U16 x)
 	return count;
 }
 
-int Bitboard::ChainScoreForPlayer(int player)
+int Bitboard::ChainScoreForPlayer(GameTag player)
 {
 	int chainScore = 0;
 	int longestChain = 0;
@@ -120,7 +135,7 @@ int Bitboard::ChainScoreForPlayer(int player)
 	U16 otherBoard = oBoard;	// Use the other board to exclude moves the other player blocked
 
 	// Set the boards according to the player
-	if (player == PLAYER_O) { board = oBoard; otherBoard = xBoard; }
+	if (player == GameTag::Player_O) { board = oBoard; otherBoard = xBoard; }
 
 	// Loop through all win patterns
 	while (index < 10)
@@ -137,7 +152,7 @@ int Bitboard::ChainScoreForPlayer(int player)
 	return chainScore + longestChain;	// The score is the sum of all partial chains squared and the longest one
 }
 
-/* Find the power of the ls1b to find its index */
+/* Find the power of ls1b to find its index */
 inline int GetLS1BPower(U16 &x)
 {
 	U16 ls1b = x & -x;
@@ -177,16 +192,16 @@ void Bitboard::Print()
 	}
 
 	/* Print which player is taking the next turn */
-	if (m_Winner == RESULT_NONE)
+	if (m_Winner == GameTag::Result_None)
 	{
-		if (m_Player == PLAYER_X)
+		if (m_Player == GameTag::Player_X)
 			printf("X's turn.\n");
 		else
 			printf("O's turn.\n");
 	}
 }
 
-std::vector<double> Bitboard::EncodeBoard()
+std::vector<double> Bitboard::EncodeBoardDVec(GameTag player)
 {
 	std::vector<double> encoded(16, 0.0);
 
@@ -194,11 +209,35 @@ std::vector<double> Bitboard::EncodeBoard()
 	U16 xGrid = xBoard;
 	U16 oGrid = oBoard;
 
+	/* 1 for player's square, -1 for opponent's square */
+	int xValue = 1, oValue = -1;
+	if (player == GameTag::Player_O)
+	{
+		xValue = -1;
+		oValue = 1;
+	}
+	
 	/* Fill the encoded board */
 	while (xGrid)
-		encoded[15 - GetLS1BPower(xGrid)] = 1;
+		encoded[15 - GetLS1BPower(xGrid)] = xValue;
 	while (oGrid)
-		encoded[15 - GetLS1BPower(oGrid)] = -1;
+		encoded[15 - GetLS1BPower(oGrid)] = oValue;
+
+	return encoded;
+}
+
+U32 Bitboard::EncodeBoardU32(GameTag player)
+{
+	/* This encodes boards in a symmetrical way.
+	The board of the given player is put the significant half of the integer. */
+	U32 encoded = (U32)xBoard;
+	if (player == GameTag::Player_X)
+	{
+		encoded <<= 16;
+		encoded |= (U32)oBoard;
+	}
+	else
+		encoded |= (U32)oBoard << 16;
 
 	return encoded;
 }

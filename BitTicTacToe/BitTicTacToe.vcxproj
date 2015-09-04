@@ -108,6 +108,9 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <AdditionalOptions>
+      </AdditionalOptions>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -124,6 +127,7 @@
     <ClCompile Include="PlayerEvolutionary.cpp" />
     <ClCompile Include="PlayerHuman.cpp" />
     <ClCompile Include="PlayerMinimax.cpp" />
+    <ClCompile Include="PlayerMinimaxLookup.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bitboard.h" />
@@ -134,6 +138,7 @@
     <ClInclude Include="PlayerEvolutionary.h" />
     <ClInclude Include="PlayerHuman.h" />
     <ClInclude Include="PlayerMinimax.h" />
+    <ClInclude Include="PlayerMinimaxLookup.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

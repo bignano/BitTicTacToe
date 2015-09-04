@@ -1,20 +1,24 @@
 #include "GameManager.h"
 #include <stdio.h>
 #include <iostream>
-#include <time.h>
+#include <chrono>
+#include <exception>
 
 using namespace std;
 
-void GameManager::PlayGame()
+void GameManager::PlayGame(bool askAgain, bool verbose)
 {
+	if (Player1->GetPlayerTag() == Player2->GetPlayerTag())
+		throw exception("Players must have different tags.");
+
 	/* Start with an empty board */
 	board = Bitboard(cPlayer->GetPlayerTag());
-	board.Print();
+	if (verbose)	board.Print();
 
 
-	/* Statistics of the game: longest and average time of 'thinking' (for both players). */
-	int stats_average = 0;
-	int stats_highest = 0;
+	/* Statistics: longest and average time of 'thinking' (for both players). */
+	std::chrono::duration<float, std::milli> stats_average(0);
+	std::chrono::duration<float, std::milli> stats_highest(0);
 	int turns = 0;
 
 	/* 
@@ -22,51 +26,59 @@ void GameManager::PlayGame()
 	Ask the current player for a move, update the board and switch players.
 	Terminates when the game ends with a winner or draw.
 	*/
-	while (board.GetWinner() == RESULT_NONE)
+	while (board.GetWinner() == GameTag::Result_None)
 	{
 		/* Ask the player for a move and record the time it took to return. */
-		clock_t start = clock();
+		auto start = std::chrono::high_resolution_clock::now();
 		U16 nextMove = cPlayer->GetMove(board);
-		clock_t end = clock();
-		int clocks = end - start;
+		auto end = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<float, std::milli> elapsed = end - start;
+
+		if (nextMove == ABORT_GAME)
+		{
+			printf("Game aborted.\n");
+			if (DisplayPolarQuestion("Play Again?"))
+				PlayGame();
+			else return;
+		}
 
 		/* Collect stats. */
-		if (clocks > stats_highest)
-			stats_highest = clocks;
-		stats_average += clocks; turns++;
-		printf("Move returned in %i ms\n", clocks);
+		if (elapsed.count() > stats_highest.count())
+			stats_highest = elapsed;
+		stats_average += elapsed; turns++;
+		if (verbose) printf("Move returned in %f ms\n", elapsed.count());
 
 		/* Update the board with the latest move, print it and switch players. */
-		board = board.DoMove(nextMove);
-		board.Print();
+		board = board.DoMove(nextMove, cPlayer->GetPlayerTag());
+		if (verbose) board.Print();
 		cPlayer = (cPlayer == Player1) ? Player2 : Player1;
 	} 
 
 	/* Display the result (winner) of the last match and add score to winner. */
 	switch (board.GetWinner())
 	{
-	case PLAYER_X:
+	case GameTag::Player_X:
 		xScore++;
-		printf("X wins!\n");
+		if (verbose) printf("X wins!\n");
 		break;
-	case PLAYER_O:
+	case GameTag::Player_O:
 		oScore++;
-		printf("O wins!\n");
+		if (verbose) printf("O wins!\n");
 		break;
-	case RESULT_DRAW:
+	case GameTag::Result_Draw:
 		dScore++;
-		printf("It's a draw!\n");
+		if (verbose) printf("It's a draw!\n");
 		break;
 	default:
 		break;
 	}
 
 	/* Print scores*/
-	printf("Scores:  X = %i  |  O = %i  | Draw = %i\n", xScore, oScore, dScore);
+	if (verbose) printf("Scores:  X = %i  |  O = %i  | Draw = %i\n", xScore, oScore, dScore);
 	/* Print stats*/
-	printf("Stats: Time: total = %i ms | longest = %i ms | average = %i ms\n", stats_average, stats_highest, stats_average / turns);
+	if (verbose) printf("Time: total %fms | longest %fms | average %fms\n", stats_average.count(), stats_highest.count(), stats_average.count() / turns);
 	/* Ask the player for another game*/
-	if (DisplayPolarQuestion("Play Again?"))
+	if (askAgain && DisplayPolarQuestion("Play Again?"))
 		PlayGame();
 }
 
@@ -74,46 +86,35 @@ bool GameManager::DisplayPolarQuestion(string message)
 {
 	/* User must choose yes or no. */
 	bool result = false;
-	bool validInput = true;
-	do
+
+	cout << message << " (y/n)\n>  ";	// Display message
+	string input;
+	getline(cin, input);				// preferred way of getting input
+	cout << endl;
+
+	switch (input[0])		// Check if the answer is valid
 	{
-		cout << message << " (y/n)\n>  ";
-		string input;
-		getline(cin, input);	// preferred way of getting input
-		printf("\n");
-		switch (input[0])
-		{
-		case 'y':
-		case 'Y':
-			result = true; 
-			validInput = true;
-			break;
-		case 'n':
-		case 'N':
-			result = false; 
-			validInput = true;
-			break;
-		default:
-			validInput = false;
-			break;
-		}
-	} while (!validInput);
+	case 'y':
+	case 'Y':
+		result = true; 
+		break;
+	case 'n':
+	case 'N':
+		result = false; 
+		break;
+	default:
+		return DisplayPolarQuestion(message);	// If the input is invalid, display message again
+	}
 
 	return result;
 }
 
 int GameManager::DisplayNumberQuestion(string message)
 {
-	cout << message << "\n> ";
+	cout << message << "\n> ";						// Display message
 	string input;
-	getline(cin, input);
+	getline(cin, input);							// Get user input, safe way
 	if (input == "")
-		return DisplayNumberQuestion(message);
-	return atoi(input.c_str());
-}
-
-GameManager::~GameManager()
-{
-	delete Player1;
-	delete Player2;
+		return DisplayNumberQuestion(message);		// If the input is invalid, display message again
+	return atoi(input.c_str());						// Convert c-style string to int
 }

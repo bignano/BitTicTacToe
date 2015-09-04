@@ -2,6 +2,14 @@
 #include "GameManager.h"
 #include <math.h>
 
+bool PlayerHuman::IsValidAnswer(int ans)
+{
+	int f = ans / 10;
+	int l = ans % 10;
+	if (f > 4 || f < 1 || l > 4 || l < 1)
+		return false;
+	return true;
+}
 U16 PlayerHuman::GetMove(Bitboard board)
 {
 	U16 move;
@@ -11,8 +19,10 @@ U16 PlayerHuman::GetMove(Bitboard board)
 		int answer;
 		do
 		{
-			answer = GameManager::DisplayNumberQuestion("Enter move index:");
-		} while (answer > 44 || answer < 11);
+			answer = GameManager::DisplayNumberQuestion("Enter move index: (0 to abort)");
+			if (answer == 0)
+				return ABORT_GAME;
+		} while (!IsValidAnswer(answer));
 
 		/* Convert from human index to bitboard index. */
 

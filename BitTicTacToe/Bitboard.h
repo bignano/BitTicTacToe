@@ -3,13 +3,17 @@
 #include <vector>
 #include <stdint.h>		// For UINT16_MAX
 
-#define RESULT_NONE 0
-#define PLAYER_X	1
-#define PLAYER_O	2
-#define RESULT_DRAW 3
+// Define unsigned integers for board and move storage
+typedef uint16_t U16;
+typedef uint32_t U32;
 
-// Define unsigned integer for board storage
-typedef unsigned short U16;
+enum class GameTag
+{
+	Result_None,
+	Player_X,
+	Player_O,
+	Result_Draw
+};
 
 /*
 BOARD REPRESENTATION
@@ -40,7 +44,7 @@ NOTES
 */
 
 /* 
-The 10 win patterns incoded as binary numbers and converted to decimal
+The 10 win patterns encoded as binary numbers and converted to decimal
 0-3 rows  |  4-7 columns  |  8 diagonal \  |  9 diognnal /
 */
 static const U16 winPatterns[10] = {
@@ -68,47 +72,58 @@ class Bitboard
 public:
 
 	/* Default constructor for an empty board */
-	Bitboard(int firstPlayer=PLAYER_X) : 
-		xBoard(0),				// Empty board
-		oBoard(0),				// Empty board
-		m_Player(firstPlayer),		// PLAYER_X
-		m_Winner(RESULT_NONE),	// No winner, RESULT_NONE
+	Bitboard(GameTag firstPlayer=GameTag::Player_X) : 
+		xBoard(0),						// Empty board
+		oBoard(0),						// Empty board
+		m_Player(firstPlayer),			
+		m_Winner(GameTag::Result_None),	// No winner, RESULT_NONE
 		m_BitCount(16) {};		
 
 	~Bitboard() {} ;
 
 	/* Returns the identifier of the player who is next to make a move. */
-	int GetPlayer() const { return m_Player; }
-	/* Returns the player who has won, or indicate a draw or a mid-game state (player == None). */
-	int GetWinner() const { return m_Winner; }
+	inline GameTag GetPlayerTag() const { return m_Player; }
+	/* Returns the identifier of the player who is NOT next to make a move. */
+	inline GameTag GetOtherPlayerTag() const;
+	/* Returns the player who has won, or indicate a draw or a mid-game state (State_None). */
+	inline GameTag GetWinner() const { return m_Winner; }
 
 	/* Returns an array of indicies of all legal moves for the currnt board. */
-	U16* GetAvailableMoves();
+	U16 *GetAvailableMoves() const;
 
 	/* Returns true if the move is legal, false otherwise. */
 	bool CheckMove(U16 move);
 
 	/* 
 	Returns a new board after making the specified move.
-	Player must give a legal move.
+	Checks for errors, to be used with game managers
+	*/
+	Bitboard DoMove(U16 move, GameTag player);
+
+	/*
+	Returns a new board after making the specified move.
+	Does not check for errors, to be used with minimax.
 	*/
 	Bitboard DoMove(U16 move);
 
 	/* Returns the number of clear bits in the board, i.e. the number of moves available. */
-	int GetClearBitsCount() { return m_BitCount; }
+	inline int GetClearBitsCount() const { return m_BitCount; }
 
 	/* Returns an evaluation of the board regarding a player, based on number of chains and longest one. */
-	int ChainScoreForPlayer(int player);
+	int ChainScoreForPlayer(GameTag player);
 
 	/* Print the board to the console. */
 	void Print();
 	
-	std::vector<double> EncodeBoard();
+	/* Represent the board as 16-component vector, positives for player, negatives for opponent */
+	std::vector<double> EncodeBoardDVec(GameTag player);
+	 
+	U32 EncodeBoardU32(GameTag player);
 
 private:
 	
 	/* Private constructor, used in move generation. */
-	Bitboard(U16 xB, U16 oB, int player) :
+	inline Bitboard(U16 xB, U16 oB, GameTag player) :
 		xBoard(xB),
 		oBoard(oB),
 		m_Player(player),
@@ -121,15 +136,16 @@ private:
 	U16 oBoard;
 	
 	/* The player who is next to make a move. */
-	int m_Player;
+	GameTag m_Player;
 
-	/* Count of empty bits */
-	int CountClearBits();
+	/* Number of clear bits */
+	inline int CountClearBits();
 	int m_BitCount;
 
-	/* Find the winner, used once during initialization. */
-	int FindWinner();
+	/* Find the winner, used once during construction. */
+	inline GameTag FindWinner();
 	/* The identifier of the winner (x, o, draw, none). */
-	int m_Winner;
+	GameTag m_Winner;
+
 };
 
