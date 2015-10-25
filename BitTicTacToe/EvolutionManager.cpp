@@ -163,19 +163,14 @@ void EvolutionManager::Mutate()
 {
 	for (int parent = 0; parent < m_PopulationSize; parent++)
 	{
-		/* Get new, slightly varied weights and biases for the new player */
-
-		vector<dVector> newBiases = m_Population[parent].GetNetwork().GetBiases();
-		RanodmizeVector(newBiases);
+		/* Get new, slightly varied weights for the new player */
 
 		vector<vector<dVector>> newWeights = m_Population[parent].GetNetwork().GetWeights();
 		for (int layer = 0; layer < newWeights.size(); layer++)
-		{
 			RanodmizeVector(newWeights[layer]);
-		}
 
 		// Add the player to the population
-		m_Population.push_back(PlayerEvolutionary(NeuralNet(newBiases, newWeights), 
+		m_Population.push_back(PlayerEvolutionary(NeuralNet(newWeights), 
 			GameTag::Player_X, m_SearchDepth, m_ThreadsPerPlayer, false, m_UsePowerSave));
 	}
 }

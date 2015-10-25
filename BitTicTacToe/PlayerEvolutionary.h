@@ -16,7 +16,7 @@ public:
 		bool powerSave = false
 		) :
 		PlayerMinimax(tag, depth, false, maxNumberOfThreads, verbose, powerSave),
-		m_Net(NeuralNet(std::vector<int>({ 16, 64, 8, 1 }))),
+		m_Net(NeuralNet(std::vector<size_t>({ 16, 32, 8, 1 }))),
 		m_FitnessValue(0),
 		m_GamesPlayed(0)
 	{}

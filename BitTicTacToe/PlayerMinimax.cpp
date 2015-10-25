@@ -17,6 +17,15 @@ T Min(const T &t1, const T &t2)
 	return (t1 < t2) ? t1 : t2;
 }
 
+template<class T>
+std::vector<T> subvector(const std::vector<T>& vec, size_t first, size_t last)
+{
+	std::vector<T> nvec(last - first + 1);
+	for (size_t i = 0; i < (last - first); i++)
+		nvec[i] = vec[first + i];
+	return nvec;
+}
+
 U16 PlayerMinimax::GetMove(Bitboard board)
 {
 	using namespace std;
@@ -27,7 +36,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 	// Get all the next moves for the board
 	U16 *nextMoves = board.GetAvailableMoves();
 	int   moveCount = board.GetClearBitsCount();
-	
+
 	// Convert C-style array to vector
 	vector<U16> nextMovesVec(moveCount);
 	for (int i = 0; i < moveCount; i++)
@@ -37,7 +46,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 	int numberOfThreads = m_NumberOfThreads;
 	if (moveCount < numberOfThreads)	// Don't use more threads than tasks to performe
 		numberOfThreads = moveCount;
-	
+
 	vector<vector<int>> dist = DistributeWork(moveCount, numberOfThreads);
 
 	--numberOfThreads;	// We are already using one thread
@@ -54,20 +63,17 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 			&PlayerMinimax::MinimaxWorker,		// Pass the worker function
 			this,								// Since this is a member function, 
 												// we have to include the hideden pointer this
-			board,								
-			vector<U16>(						// Construct the subset vector (worker moves)
-				&nextMovesVec[dist[threadNumber+1][0]], 
-				&nextMovesVec[dist[threadNumber+1][1]]) 
+			board,
+			subvector<U16>(nextMovesVec,					// Construct the subset vector (worker moves)
+				dist[threadNumber + 1][0],
+				dist[threadNumber + 1][1])
 			));
 	}
-	
+
 	// Let the main thread do part of the work
 	MinimaxMove bestMove = MinimaxWorker(
-		board, 
-		vector<U16>(
-			&nextMovesVec[dist[0][0]], 
-			&nextMovesVec[dist[0][1]]
-			));
+		board,
+		subvector<U16>(nextMovesVec, dist[0][0], dist[0][1]));
 
 	// Get moves and find best
 	for (int i = 0; i < numberOfThreads; i++)
@@ -79,7 +85,7 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 
 	if (m_Verbose)
 		printf("\nvalue: %i | static evaluations: %i\n", bestMove.value, svCount);
-	
+
 	delete[] nextMoves;
 	return bestMove.index;
 }
@@ -115,9 +121,9 @@ U16 PlayerMinimax::GetMove(Bitboard board)
 
 MinimaxMove PlayerMinimax::MinimaxWorker(Bitboard board, std::vector<U16> nextMoves)
 {
-	
-	 //printf("moves got: %i\n", (int)nextMoves.size());
-	// Initialize the first move
+
+	//printf("moves got: %i\n", (int)nextMoves.size());
+   // Initialize the first move
 	MinimaxMove move;
 	move.value = -MINIMAX_INFINITY;
 	move.index = nextMoves[0];
@@ -143,12 +149,12 @@ std::vector<std::vector<int>> PlayerMinimax::DistributeWork(int moveCount, int n
 {
 	using namespace std;
 	vector<vector<int>> dist;
-	int baseNumber = moveCount / numberOfThreads;		// Number of move each worker gets
+	int baseNumber = moveCount / numberOfThreads;		// Number of move each worker gets, -1 because range is exclusive
 	int remainder = moveCount % numberOfThreads;		// The rest, distributed evenly across workers
 
 	// Set the moves to be calculated by main first, 
 	// to make sure the main gets the least 
-	dist.push_back(vector<int>({ 0, baseNumber }));
+	dist.push_back(vector<int>({0, baseNumber}));
 
 	//printf("(%i,%i)\n", dist[0][0], dist[0][1]);
 	//printf("count=%i th=%i \n", moveCount, numberOfThreads);
@@ -156,16 +162,12 @@ std::vector<std::vector<int>> PlayerMinimax::DistributeWork(int moveCount, int n
 	// Set moves for additional threads
 	for (int i = 1; i < m_NumberOfThreads; ++i)
 	{
-		// If more moves remain, give one the the worker
-		int partOfRemainder = 0;
-		if (remainder > 0)
-		{
-			partOfRemainder = 1;
-			--remainder;
-		}
+		// If more extra moves remain, give one the the worker
+		int extra = remainder-- > 0 ? 1 : 0;
+
 		// To get the numbers of the moves, we use the last number of the previous thread
 		// note that range of vectors is [inclusive, exclusive]
-		dist.push_back(vector<int>({ dist[i - 1][1],	dist[i - 1][1] + baseNumber + partOfRemainder }));
+		dist.push_back(vector<int>({dist[i - 1][1], dist[i - 1][1] + baseNumber + extra}));
 	}
 	return dist;
 }
@@ -221,7 +223,7 @@ int PlayerMinimax::GetStaticValue(Bitboard &board)
 	int value = 0;
 
 	if (winner == m_PlayerTag)
-		value =  1000000000 + board.GetClearBitsCount();
+		value = 1000000000 + board.GetClearBitsCount();
 
 	if (winner == otherPlayer)
 		value = -1000000000 - board.GetClearBitsCount();
